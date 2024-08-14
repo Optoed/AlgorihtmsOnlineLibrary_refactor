@@ -182,6 +182,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	// Генерируем токен верификации
 	verificationToken, err := generateResetToken()
+	//log.Println("verificationToken: ", verificationToken)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -189,12 +190,14 @@ func Register(w http.ResponseWriter, r *http.Request) {
 
 	var existUserWithToken bool
 	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM email_verification_tokens WHERE user_id = $1)", user.ID).Scan(&existUserWithToken)
+	//log.Println("existUserWithToken: ", existUserWithToken)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if existUserWithToken {
+		//log.Println("User already have token")
 		_, err = db.Exec("DELETE FROM email_verification_tokens WHERE user_id = $1", user.ID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -202,13 +205,15 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = db.Exec("INSERT INTO email_verification_tokens(user_id, token, email) VALUES($1, $2, $3)", user.ID, verificationToken, user.Email)
+	_, err = db.Exec("INSERT INTO email_verification_tokens(user_id, token, email, username) VALUES($1, $2, $3, $4)", user.ID, verificationToken, user.Email, user.Username)
+	//log.Println("error: ", err)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	err = sendVerificationEmail(user.Email, user.Username, verificationToken)
+	//log.Println("error: ", err)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -676,13 +681,13 @@ func GetAlgorithmByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("id of fetching algorithm by id: ", id)
+	//log.Println("id of fetching algorithm by id: ", id)
 
 	err = db.QueryRow("SELECT id, title, code, user_id, topic, programming_language FROM algorithms WHERE id = $1",
 		id).Scan(&algorithm.ID, &algorithm.Title, &algorithm.Code, &algorithm.UserID, &algorithm.Topic, &algorithm.ProgrammingLanguage)
 
-	log.Println("algorithms after fetching by id", algorithm)
-	log.Println("error after fetching by id", err)
+	//log.Println("algorithms after fetching by id", algorithm)
+	//log.Println("error after fetching by id", err)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
